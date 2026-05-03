@@ -1,0 +1,110 @@
+.dashboard-container {
+  padding: 25px;
+  background-color: #f0f2f5;
+  min-height: calc(100vh - 60px);
+}
+
+.dashboard-menu {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.btn-primary.active {
+  background-color: #0056b3;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-secondary:hover {
+  background-color: #545b62;
+}
+
+.btn-success {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-danger {
+  padding: 10px 20px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.summary-card {
+  padding: 20px;
+  border-radius: 8px;
+  color: white;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.summary-card h3 {
+  font-size: 32px;
+  margin-bottom: 5px;
+}
+
+.summary-card p {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.loader {
+  text-align: center;
+  padding: 50px;
+  font-size: 18px;
+  color: gray;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+@media (max-width: 768px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

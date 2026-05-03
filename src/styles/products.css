@@ -1,0 +1,251 @@
+.search-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-bar input,
+.search-bar select {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 15px;
+}
+
+.search-bar input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.product-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.product-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background-color: #f8f9fa;
+}
+
+.product-card-body {
+  padding: 14px;
+}
+
+.product-card-body h4 {
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
+.product-desc {
+  color: gray;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.product-price {
+  color: #28a745;
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.product-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: gray;
+  margin-bottom: 12px;
+}
+
+.stock-low {
+  color: red;
+  font-weight: bold;
+}
+
+.stock-ok {
+  color: green;
+  font-weight: bold;
+}
+
+.product-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.product-actions button {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Detail Page */
+.detail-container {
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+  margin-top: 15px;
+}
+
+.detail-image {
+  background-color: #f8f9fa;
+  padding: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-image img {
+  width: 100%;
+  border-radius: 8px;
+  max-height: 300px;
+  object-fit: cover;
+}
+
+.detail-info {
+  padding: 30px;
+}
+
+.category-badge {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.detail-price {
+  color: #28a745;
+  font-size: 34px;
+  font-weight: bold;
+  margin: 20px 0;
+}
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Add/Edit Form */
+.form-container {
+  max-width: 600px;
+  margin: 0 auto;
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+}
+
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 15px;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.image-preview {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.image-preview img {
+  max-height: 150px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+}
+
+@media (max-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.product-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: contain;        /* ← contain instead of cover */
+  background-color: #f8f9fa;
+  padding: 10px;              /* ← padding so image doesn't touch edges */
+  transition: transform 0.3s;
+}
+
+.product-card:hover img {
+  transform: scale(1.05);    /* ← zoom on hover */
+}

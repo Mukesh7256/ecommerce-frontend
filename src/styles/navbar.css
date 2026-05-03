@@ -1,0 +1,74 @@
+.navbar {
+  background-color: #1a1a2e;
+  color: white;
+  padding: 15px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-brand {
+  font-size: 22px;
+  font-weight: bold;
+  cursor: pointer;
+  color: white;
+  text-decoration: none;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.navbar-user {
+  font-size: 14px;
+  color: #ccc;
+}
+
+.navbar-role {
+  font-size: 11px;
+  background-color: #ffc107;
+  color: #333;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.navbar-role.admin {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-cart {
+  padding: 8px 15px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  position: relative;
+}
+
+.btn-logout {
+  padding: 8px 15px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.active-users {
+  font-size: 12px;
+  background-color: rgba(255,255,255,0.15);
+  padding: 5px 10px;
+  border-radius: 10px;
+  color: #90ee90;
+}

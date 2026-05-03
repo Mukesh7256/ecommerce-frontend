@@ -7,12 +7,12 @@ function ProtectedRoute({ children }) {
         textAlign: "center", marginTop: "100px", fontFamily: "Arial"
       }}>
         <h2>🔒 Access Denied!</h2>
-        <p>Please login to access this page.</p>
+        <p>Please login first.</p>
         <button
-          onClick={() => window.location.href = "/"}
+          onClick={() => window.location.reload()}
           style={{
-            padding: "10px 20px", backgroundColor: "#007bff",
-            color: "white", border: "none", borderRadius: "4px",
+            padding: "10px 25px", backgroundColor: "#007bff",
+            color: "white", border: "none", borderRadius: "5px",
             cursor: "pointer", fontSize: "16px"
           }}
         >
@@ -21,7 +21,6 @@ function ProtectedRoute({ children }) {
       </div>
     );
   }
-
   return children;
 }
 
