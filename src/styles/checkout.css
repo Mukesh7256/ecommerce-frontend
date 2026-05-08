@@ -1,0 +1,233 @@
+/* ===== CHECKOUT PAGE ===== */
+.checkout-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.checkout-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 25px;
+  align-items: start;
+}
+
+.checkout-section {
+  background: white;
+  border-radius: 8px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 20px;
+}
+
+.checkout-section h3 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f0f0f0;
+  color: #1a1a2e;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.checkout-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 15px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.checkout-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.checkout-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+}
+
+.form-group-checkout {
+  margin-bottom: 18px;
+}
+
+/* Payment Methods */
+.payment-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.payment-option {
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.payment-option:hover {
+  border-color: #007bff;
+  background: #f8f9ff;
+}
+
+.payment-option.selected {
+  border-color: #007bff;
+  background: #e8f0ff;
+}
+
+.payment-icon {
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+
+.payment-name {
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.payment-desc {
+  font-size: 12px;
+  color: gray;
+}
+
+/* Order Summary Checkout */
+.checkout-summary {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  position: sticky;
+  top: 80px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 15px;
+}
+
+.summary-row.total {
+  font-weight: bold;
+  font-size: 18px;
+  border-bottom: none;
+  border-top: 2px dashed #ddd;
+  padding-top: 15px;
+  margin-top: 5px;
+}
+
+.btn-place-order {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #ff9900, #ff6600);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: transform 0.2s;
+}
+
+.btn-place-order:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255,153,0,0.4);
+}
+
+/* Order Success */
+.order-success {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  max-width: 600px;
+  margin: 40px auto;
+}
+
+.success-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+  animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Orders List */
+.orders-list {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.order-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-left: 4px solid #007bff;
+}
+
+.order-card.DELIVERED {
+  border-left-color: #28a745;
+}
+
+.order-card.CANCELLED {
+  border-left-color: #dc3545;
+}
+
+.order-card.SHIPPED {
+  border-left-color: #17a2b8;
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.order-id {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.status-badge {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.status-PENDING { background: #fff3cd; color: #856404; }
+.status-CONFIRMED { background: #cce5ff; color: #004085; }
+.status-SHIPPED { background: #d1ecf1; color: #0c5460; }
+.status-DELIVERED { background: #d4edda; color: #155724; }
+.status-CANCELLED { background: #f8d7da; color: #721c24; }
+
+@media (max-width: 768px) {
+  .checkout-grid { grid-template-columns: 1fr; }
+  .form-row-2 { grid-template-columns: 1fr; }
+  .payment-options { grid-template-columns: 1fr; }
+}

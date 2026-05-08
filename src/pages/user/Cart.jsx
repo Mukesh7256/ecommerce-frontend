@@ -489,20 +489,22 @@ function Cart({ token, onBack, onCartCountChange }) {
             </div>
 
             {/* Checkout Button */}
-            <button style={{
-              width: "100%",
-              padding: "14px",
-              backgroundColor: "#ff9900",
-              color: "#111",
-              border: "none",
-              borderRadius: "5px",
-              fontSize: "16px",
-              fontWeight: "bold",
-              cursor: "pointer",
-              marginTop: "20px"
-            }}>
-              ⚡ Proceed to Checkout
-            </button>
+            // In Cart.jsx, update the checkout button:
+<button
+  style={{
+    width: "100%", padding: "14px",
+    backgroundColor: "#ff9900",
+    color: "#111", border: "none",
+    borderRadius: "5px", fontSize: "16px",
+    fontWeight: "bold", cursor: "pointer",
+    marginTop: "20px"
+  }}
+  onClick={() => {
+    if (onCheckout) onCheckout(items);
+  }}
+>
+  ⚡ Proceed to Checkout
+</button>
 
             {/* Continue Shopping */}
             <button
