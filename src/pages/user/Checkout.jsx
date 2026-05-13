@@ -3,6 +3,7 @@ import axios from "axios";
 import "../../styles/checkout.css";
 
 function Checkout({ token, cartItems, onSuccess, onBack }) {
+
   const [form, setForm] = useState({
     deliveryAddress: "",
     city: "",
@@ -14,6 +15,7 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Calculate prices
   const totalPrice = cartItems.reduce(
     (sum, item) =>
       sum + (item.product?.price * item.quantity), 0
@@ -26,9 +28,111 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Load Razorpay script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Razorpay Payment Handler
+  const handleRazorpayPayment = async () => {
+    setLoading(true);
+    const loaded = await loadRazorpayScript();
+
+    if (!loaded) {
+      setError("Payment gateway failed! Try COD.");
+      setLoading(false);
+      return;
+    }
+
+    const options = {
+      // ✅ Replace with your Razorpay Test Key
+      key: "rzp_test_SohNc8ajtoxvKi",
+      amount: Math.round(finalPrice * 100), // paise mein
+      currency: "INR",
+      name: "ShopEasy",
+      description: "Order Payment",
+      image: "https://via.placeholder.com/150?text=ShopEasy",
+      handler: async function (response) {
+        // Payment successful!
+        try {
+          const res = await axios.post(
+            "http://localhost:8080/api/orders/checkout",
+            { ...form, paymentMethod: "ONLINE" },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          onSuccess(res.data);
+        } catch (err) {
+          setError("Order save failed! Contact support.");
+        }
+      },
+      prefill: {
+        name: "Customer",
+        contact: form.phone || "9999999999"
+      },
+      notes: {
+        address: form.deliveryAddress
+      },
+      theme: {
+        color: "#007bff"
+      },
+      modal: {
+        ondismiss: function () {
+          setLoading(false);
+          setError("Payment cancelled by user.");
+        }
+      }
+    };
+
+    const razorpay = new window.Razorpay(options);
+    razorpay.open();
+    setLoading(false);
+  };
+
+  // Form Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); setLoading(true);
+    setError("");
+
+    // Validate form
+    if (!form.deliveryAddress.trim()) {
+      setError("Please enter delivery address!");
+      return;
+    }
+    if (!form.city.trim()) {
+      setError("Please enter city!");
+      return;
+    }
+    if (!form.state) {
+      setError("Please select state!");
+      return;
+    }
+    if (form.pincode.length !== 6) {
+      setError("Please enter valid 6-digit pincode!");
+      return;
+    }
+    if (form.phone.length !== 10) {
+      setError("Please enter valid 10-digit phone!");
+      return;
+    }
+
+    // Online Payment → Razorpay
+    if (form.paymentMethod === "ONLINE") {
+      handleRazorpayPayment();
+      return;
+    }
+
+    // COD → Direct order
+    setLoading(true);
     try {
       const res = await axios.post(
         "http://localhost:8080/api/orders/checkout",
@@ -37,9 +141,7 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
       );
       onSuccess(res.data);
     } catch (err) {
-      setError(
-        err.response?.data || "Checkout failed! Try again."
-      );
+      setError(err.response?.data || "Checkout failed! Try again.");
     } finally {
       setLoading(false);
     }
@@ -47,6 +149,8 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
 
   return (
     <div className="checkout-container">
+
+      {/* Header */}
       <div style={{
         display: "flex", alignItems: "center",
         gap: "10px", marginBottom: "25px"
@@ -57,11 +161,12 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
         <h2 style={{ margin: 0 }}>🛍️ Checkout</h2>
       </div>
 
+      {/* Error */}
       {error && (
         <div style={{
           backgroundColor: "#f8d7da", color: "#721c24",
-          padding: "12px", borderRadius: "5px",
-          marginBottom: "15px"
+          padding: "12px 16px", borderRadius: "6px",
+          marginBottom: "15px", fontSize: "14px"
         }}>
           ⚠️ {error}
         </div>
@@ -70,7 +175,7 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
       <form onSubmit={handleSubmit}>
         <div className="checkout-grid">
 
-          {/* LEFT - Delivery + Payment */}
+          {/* LEFT SIDE */}
           <div>
 
             {/* Delivery Address */}
@@ -84,10 +189,11 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                 <textarea
                   name="deliveryAddress"
                   className="checkout-input"
-                  placeholder="House/Flat No., Building, Street, Area"
+                  placeholder="House No., Street, Area, Landmark"
                   value={form.deliveryAddress}
                   onChange={handleChange}
-                  rows={3} required
+                  rows={3}
+                  required
                 />
               </div>
 
@@ -113,16 +219,19 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                     required
                   >
                     <option value="">Select State</option>
-                    <option>Maharashtra</option>
+                    <option>Andhra Pradesh</option>
                     <option>Delhi</option>
-                    <option>Karnataka</option>
-                    <option>Tamil Nadu</option>
                     <option>Gujarat</option>
+                    <option>Karnataka</option>
+                    <option>Kerala</option>
+                    <option>Madhya Pradesh</option>
+                    <option>Maharashtra</option>
+                    <option>Punjab</option>
                     <option>Rajasthan</option>
+                    <option>Tamil Nadu</option>
+                    <option>Telangana</option>
                     <option>Uttar Pradesh</option>
                     <option>West Bengal</option>
-                    <option>Telangana</option>
-                    <option>Kerala</option>
                   </select>
                 </div>
               </div>
@@ -135,9 +244,13 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                   <input
                     name="pincode"
                     className="checkout-input"
-                    placeholder="e.g. 400001"
+                    placeholder="6-digit pincode"
                     value={form.pincode}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 6) {
+                        handleChange(e);
+                      }
+                    }}
                     maxLength={6}
                     required
                   />
@@ -149,9 +262,13 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                   <input
                     name="phone"
                     className="checkout-input"
-                    placeholder="e.g. 9876543210"
+                    placeholder="10-digit mobile number"
                     value={form.phone}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 10) {
+                        handleChange(e);
+                      }
+                    }}
                     maxLength={10}
                     required
                   />
@@ -164,6 +281,7 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               <h3>💳 Payment Method</h3>
               <div className="payment-options">
 
+                {/* COD Option */}
                 <div
                   className={`payment-option ${
                     form.paymentMethod === "COD" ? "selected" : ""
@@ -173,10 +291,15 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                   })}
                 >
                   <div className="payment-icon">💵</div>
-                  <div className="payment-name">Cash on Delivery</div>
-                  <div className="payment-desc">Pay when delivered</div>
+                  <div className="payment-name">
+                    Cash on Delivery
+                  </div>
+                  <div className="payment-desc">
+                    Pay when order arrives
+                  </div>
                 </div>
 
+                {/* Online Payment Option */}
                 <div
                   className={`payment-option ${
                     form.paymentMethod === "ONLINE" ? "selected" : ""
@@ -186,9 +309,21 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                   })}
                 >
                   <div className="payment-icon">💳</div>
-                  <div className="payment-name">Online Payment</div>
+                  <div className="payment-name">
+                    Online Payment
+                  </div>
                   <div className="payment-desc">
-                    UPI / Cards / NetBanking
+                    UPI / Card / NetBanking
+                  </div>
+                  <div style={{
+                    marginTop: "5px",
+                    fontSize: "10px",
+                    backgroundColor: "#28a745",
+                    color: "white",
+                    padding: "2px 6px",
+                    borderRadius: "3px"
+                  }}>
+                    Powered by Razorpay
                   </div>
                 </div>
               </div>
@@ -196,25 +331,25 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
 
             {/* Order Items Preview */}
             <div className="checkout-section">
-              <h3>🛍️ Order Items ({cartItems.length})</h3>
-              {cartItems.map(item => (
-                <div key={item.id} style={{
+              <h3>🛒 Items ({cartItems.length})</h3>
+              {cartItems.map((item, i) => (
+                <div key={i} style={{
                   display: "flex", gap: "12px",
-                  padding: "10px 0",
-                  borderBottom: "1px solid #f0f0f0"
+                  alignItems: "center", padding: "10px 0",
+                  borderBottom: "1px solid #f5f5f5"
                 }}>
                   <img
                     src={item.product?.imageUrl}
                     alt={item.product?.name}
                     style={{
-                      width: "60px", height: "60px",
+                      width: "55px", height: "55px",
                       objectFit: "contain",
-                      borderRadius: "5px",
-                      backgroundColor: "#f8f9fa"
+                      backgroundColor: "#f8f9fa",
+                      borderRadius: "5px", padding: "4px"
                     }}
                     onError={(e) => {
                       e.target.src =
-                        "https://via.placeholder.com/60?text=No";
+                        "https://via.placeholder.com/55?text=No";
                     }}
                   />
                   <div style={{ flex: 1 }}>
@@ -242,9 +377,9 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
             </div>
           </div>
 
-          {/* RIGHT - Order Summary */}
+          {/* RIGHT SIDE - Price Summary */}
           <div className="checkout-summary">
-            <h3 style={{ marginBottom: "15px" }}>
+            <h3 style={{ margin: "0 0 15px" }}>
               📋 Price Details
             </h3>
 
@@ -252,16 +387,17 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               <span>Price ({cartItems.length} items)</span>
               <span>₹{totalPrice.toLocaleString()}</span>
             </div>
-            <div className="summary-row" style={{ color: "#28a745" }}>
+            <div className="summary-row"
+              style={{ color: "#28a745" }}>
               <span>Discount (10%)</span>
               <span>− ₹{discount.toLocaleString()}</span>
             </div>
             <div className="summary-row">
-              <span>Delivery</span>
+              <span>Delivery Charges</span>
               <span style={{
                 color: delivery === 0 ? "#28a745" : "#333"
               }}>
-                {delivery === 0 ? "FREE" : `₹${delivery}`}
+                {delivery === 0 ? "FREE 🎉" : `₹${delivery}`}
               </span>
             </div>
             <div className="summary-row total">
@@ -271,6 +407,7 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               </span>
             </div>
 
+            {/* Savings */}
             <div style={{
               backgroundColor: "#d4edda", padding: "10px",
               borderRadius: "5px", textAlign: "center",
@@ -278,45 +415,57 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
             }}>
               <p style={{
                 color: "#155724", margin: 0,
-                fontSize: "14px", fontWeight: "bold"
+                fontWeight: "bold", fontSize: "14px"
               }}>
                 🎉 You save ₹{discount.toLocaleString()}!
               </p>
             </div>
 
+            {/* Payment Info */}
             <div style={{
               backgroundColor: "#e8f4fd", padding: "10px",
-              borderRadius: "5px", marginBottom: "10px"
+              borderRadius: "5px", marginBottom: "5px"
             }}>
               <p style={{
                 margin: 0, fontSize: "13px", color: "#0c5460"
               }}>
-                💳 Payment: {
-                  form.paymentMethod === "COD"
-                    ? "Cash on Delivery"
-                    : "Online Payment"
+                💳 {form.paymentMethod === "COD"
+                  ? "Cash on Delivery"
+                  : "Online Payment via Razorpay"
                 }
               </p>
             </div>
 
+            {/* Place Order Button */}
             <button
               type="submit"
               className="btn-place-order"
               disabled={loading}
+              style={{
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? "not-allowed" : "pointer"
+              }}
             >
               {loading
-                ? "⏳ Placing Order..."
-                : "🛍️ Place Order"
+                ? "⏳ Processing..."
+                : form.paymentMethod === "ONLINE"
+                  ? "💳 Pay ₹" + finalPrice.toLocaleString()
+                  : "🛍️ Place Order"
               }
             </button>
 
+            {/* Trust Badges */}
             <div style={{
               textAlign: "center", marginTop: "15px",
-              fontSize: "12px", color: "gray"
+              fontSize: "12px", color: "gray",
+              lineHeight: "1.8"
             }}>
-              🔒 Safe and Secure Payments
+              <p style={{ margin: 0 }}>🔒 100% Secure Payments</p>
+              <p style={{ margin: 0 }}>✅ Easy 7-Day Returns</p>
+              <p style={{ margin: 0 }}>🚚 Fast Delivery</p>
             </div>
           </div>
+
         </div>
       </form>
     </div>

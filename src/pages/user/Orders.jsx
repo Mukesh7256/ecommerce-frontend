@@ -7,6 +7,7 @@ function Orders({ token, onBack }) {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [view, setView] = useState("list");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchOrders();
@@ -15,12 +16,14 @@ function Orders({ token, onBack }) {
   const fetchOrders = async () => {
     try {
       setLoading(true);
+      setError("");
       const res = await axios.get(
         "http://localhost:8080/api/orders/my-orders",
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setOrders(res.data);
     } catch (err) {
+      setError("Failed to load orders!");
       console.log(err);
     } finally {
       setLoading(false);
@@ -36,6 +39,9 @@ function Orders({ token, onBack }) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       alert("✅ Order cancelled!");
+      if (view === "tracking") {
+        setView("list");
+      }
       fetchOrders();
     } catch (err) {
       alert(err.response?.data || "Cancel failed!");
@@ -44,194 +50,246 @@ function Orders({ token, onBack }) {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      day: "numeric", month: "long", year: "numeric"
-    });
+    try {
+      return new Date(dateStr).toLocaleDateString("en-IN", {
+        day: "numeric", month: "long", year: "numeric"
+      });
+    } catch {
+      return "N/A";
+    }
   };
 
-  // ===== ORDER TRACKING VIEW =====
+  // ===== LOADING =====
+  if (loading) {
+    return (
+      <div style={{ textAlign: "center", padding: "80px" }}>
+        <p style={{ fontSize: "20px", color: "gray" }}>
+          ⏳ Loading orders...
+        </p>
+      </div>
+    );
+  }
+
+  // ===== ERROR =====
+  if (error) {
+    return (
+      <div style={{ textAlign: "center", padding: "80px" }}>
+        <p style={{ color: "red", fontSize: "16px" }}>{error}</p>
+        <button className="btn-primary" onClick={fetchOrders}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  // ===== TRACKING VIEW =====
   if (view === "tracking" && selectedOrder) {
-    const steps = [
+
+    const allSteps = [
       {
         label: "Order Placed",
         icon: "📋",
-        status: "CONFIRMED",
-        desc: "Your order has been placed"
+        desc: "Your order has been received",
+        statuses: ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED"]
       },
       {
         label: "Confirmed",
         icon: "✅",
-        status: "CONFIRMED",
-        desc: "Order confirmed by seller"
+        desc: "Seller confirmed your order",
+        statuses: ["CONFIRMED", "SHIPPED", "DELIVERED"]
       },
       {
         label: "Shipped",
         icon: "🚚",
-        status: "SHIPPED",
-        desc: "Order is on the way"
+        desc: "Order is out for delivery",
+        statuses: ["SHIPPED", "DELIVERED"]
       },
       {
         label: "Delivered",
         icon: "🎉",
-        status: "DELIVERED",
-        desc: "Order delivered successfully"
+        desc: "Order delivered successfully",
+        statuses: ["DELIVERED"]
       }
     ];
 
-    const statusOrder = [
-      "PENDING", "CONFIRMED", "SHIPPED", "DELIVERED"
-    ];
-    const currentIndex = statusOrder.indexOf(
-      selectedOrder.status
-    );
+    const getStepProgress = () => {
+      const status = selectedOrder.status;
+      if (status === "PENDING") return 0;
+      if (status === "CONFIRMED") return 1;
+      if (status === "SHIPPED") return 2;
+      if (status === "DELIVERED") return 3;
+      return 0;
+    };
+
+    const currentStep = getStepProgress();
+    const progressWidth = ["0%", "33%", "66%", "100%"][currentStep];
 
     return (
-      <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "750px", margin: "0 auto" }}>
 
-        {/* Back Button */}
+        {/* Back */}
         <button
           className="btn-secondary"
-          onClick={() => setView("list")}
+          onClick={() => {
+            setView("list");
+            setSelectedOrder(null);
+          }}
           style={{ marginBottom: "20px" }}
         >
           ← Back to Orders
         </button>
 
-        {/* Order Info Card */}
+        {/* Order Header */}
         <div style={{
           backgroundColor: "white", borderRadius: "8px",
           padding: "20px", marginBottom: "20px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          display: "flex", justifyContent: "space-between",
+          alignItems: "center", flexWrap: "wrap", gap: "10px"
         }}>
-          <div style={{
-            display: "flex", justifyContent: "space-between",
-            alignItems: "center", flexWrap: "wrap", gap: "10px"
-          }}>
-            <div>
-              <h3 style={{ margin: 0 }}>
-                Order #{selectedOrder.id}
-              </h3>
-              <p style={{
-                color: "gray", fontSize: "14px", margin: "5px 0 0"
-              }}>
-                Placed on {formatDate(selectedOrder.orderDate)}
-              </p>
-            </div>
-            <span className={`status-badge status-${selectedOrder.status}`}>
-              {selectedOrder.status}
-            </span>
+          <div>
+            <h3 style={{ margin: "0 0 5px" }}>
+              📦 Order #{selectedOrder.id}
+            </h3>
+            <p style={{ margin: 0, color: "gray", fontSize: "14px" }}>
+              Placed on {formatDate(selectedOrder.orderDate)}
+            </p>
           </div>
+          <span className={`status-badge status-${selectedOrder.status}`}
+            style={{ fontSize: "15px", padding: "6px 14px" }}>
+            {selectedOrder.status === "CONFIRMED" && "✅ "}
+            {selectedOrder.status === "SHIPPED" && "🚚 "}
+            {selectedOrder.status === "DELIVERED" && "🎉 "}
+            {selectedOrder.status === "CANCELLED" && "❌ "}
+            {selectedOrder.status === "PENDING" && "⏳ "}
+            {selectedOrder.status}
+          </span>
         </div>
 
-        {/* ===== TRACKING STEPS ===== */}
-        <div style={{
-          backgroundColor: "white", borderRadius: "8px",
-          padding: "30px", marginBottom: "20px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
-        }}>
-          <h3 style={{ marginBottom: "30px" }}>
-            📍 Track Your Order
-          </h3>
+        {/* Tracking Steps */}
+        {selectedOrder.status !== "CANCELLED" ? (
+          <div style={{
+            backgroundColor: "white", borderRadius: "8px",
+            padding: "30px 25px", marginBottom: "20px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+          }}>
+            <h3 style={{ margin: "0 0 35px" }}>
+              📍 Live Tracking
+            </h3>
 
-          <div style={{ position: "relative" }}>
+            {/* Progress Bar + Steps */}
+            <div style={{ position: "relative", padding: "0 20px" }}>
 
-            {/* Progress Line */}
-            <div style={{
-              position: "absolute",
-              top: "25px",
-              left: "25px",
-              right: "25px",
-              height: "3px",
-              backgroundColor: "#e0e0e0",
-              zIndex: 0
-            }}>
+              {/* Background Line */}
               <div style={{
-                height: "100%",
-                backgroundColor: "#28a745",
-                width: currentIndex === 0 ? "0%" :
-                       currentIndex === 1 ? "33%" :
-                       currentIndex === 2 ? "66%" : "100%",
-                transition: "width 0.5s ease"
-              }} />
-            </div>
+                position: "absolute",
+                top: "24px",
+                left: "calc(20px + 24px)",
+                right: "calc(20px + 24px)",
+                height: "4px",
+                backgroundColor: "#e0e0e0",
+                borderRadius: "2px"
+              }}>
+                {/* Progress Fill */}
+                <div style={{
+                  height: "100%",
+                  width: progressWidth,
+                  backgroundColor: "#28a745",
+                  borderRadius: "2px",
+                  transition: "width 1s ease"
+                }} />
+              </div>
 
-            {/* Steps */}
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              position: "relative", zIndex: 1
-            }}>
-              {steps.map((step, index) => {
-                const isDone = index <= currentIndex;
-                const isCurrent = index === currentIndex;
-
-                return (
-                  <div key={index} style={{
-                    textAlign: "center",
-                    flex: 1
-                  }}>
-                    {/* Circle */}
-                    <div style={{
-                      width: "50px", height: "50px",
-                      borderRadius: "50%",
-                      backgroundColor: isDone ? "#28a745" : "#e0e0e0",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      margin: "0 auto 10px",
-                      fontSize: "20px",
-                      border: isCurrent
-                        ? "3px solid #28a745" : "none",
-                      boxShadow: isCurrent
-                        ? "0 0 0 4px rgba(40,167,69,0.2)" : "none",
-                      transition: "all 0.3s"
+              {/* Step Circles */}
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                position: "relative"
+              }}>
+                {allSteps.map((step, index) => {
+                  const done = index <= currentStep;
+                  const current = index === currentStep;
+                  return (
+                    <div key={index} style={{
+                      textAlign: "center", flex: 1
                     }}>
-                      {isDone ? step.icon : "⏳"}
+                      <div style={{
+                        width: "48px", height: "48px",
+                        borderRadius: "50%",
+                        backgroundColor: done ? "#28a745" : "#e9ecef",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 12px",
+                        fontSize: "20px",
+                        border: current
+                          ? "3px solid #28a745" : "3px solid transparent",
+                        boxShadow: current
+                          ? "0 0 0 4px rgba(40,167,69,0.2)" : "none",
+                        transition: "all 0.3s"
+                      }}>
+                        {done ? step.icon : "○"}
+                      </div>
+                      <p style={{
+                        margin: 0, fontSize: "13px",
+                        fontWeight: current ? "bold" : "normal",
+                        color: done ? "#28a745" : "#aaa"
+                      }}>
+                        {step.label}
+                      </p>
+                      <p style={{
+                        margin: "3px 0 0",
+                        fontSize: "11px",
+                        color: done ? "gray" : "#ccc"
+                      }}>
+                        {done ? step.desc : "Pending"}
+                      </p>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                    {/* Label */}
-                    <p style={{
-                      margin: 0,
-                      fontWeight: isCurrent ? "bold" : "normal",
-                      color: isDone ? "#28a745" : "gray",
-                      fontSize: "13px"
-                    }}>
-                      {step.label}
-                    </p>
-                    <p style={{
-                      margin: "3px 0 0",
-                      fontSize: "11px",
-                      color: "gray"
-                    }}>
-                      {isDone ? step.desc : "Pending"}
-                    </p>
-                  </div>
-                );
-              })}
+            {/* Delivery Info */}
+            <div style={{
+              backgroundColor: "#f0fff4", padding: "15px 20px",
+              borderRadius: "8px", marginTop: "30px",
+              display: "flex", alignItems: "center", gap: "12px"
+            }}>
+              <span style={{ fontSize: "28px" }}>🚚</span>
+              <div>
+                <p style={{
+                  margin: 0, fontWeight: "bold",
+                  color: "#155724", fontSize: "15px"
+                }}>
+                  {selectedOrder.status === "DELIVERED"
+                    ? "Order Delivered! 🎉"
+                    : "Expected Delivery"
+                  }
+                </p>
+                <p style={{
+                  margin: "3px 0 0", color: "#155724",
+                  fontSize: "16px", fontWeight: "bold"
+                }}>
+                  {formatDate(selectedOrder.deliveryDate)}
+                </p>
+              </div>
             </div>
           </div>
-
-          {/* Expected Delivery */}
+        ) : (
           <div style={{
-            backgroundColor: "#f0fff4", padding: "15px",
-            borderRadius: "8px", marginTop: "25px",
-            display: "flex", alignItems: "center", gap: "10px"
+            backgroundColor: "#f8d7da", padding: "20px",
+            borderRadius: "8px", marginBottom: "20px",
+            textAlign: "center"
           }}>
-            <span style={{ fontSize: "24px" }}>🚚</span>
-            <div>
-              <p style={{
-                margin: 0, fontWeight: "bold", color: "#155724"
-              }}>
-                Expected Delivery
-              </p>
-              <p style={{
-                margin: 0, color: "#155724", fontSize: "16px"
-              }}>
-                {formatDate(selectedOrder.deliveryDate)}
-              </p>
-            </div>
+            <p style={{
+              color: "#721c24", fontSize: "18px",
+              fontWeight: "bold", margin: 0
+            }}>
+              ❌ This order has been cancelled
+            </p>
           </div>
-        </div>
+        )}
 
         {/* Order Items */}
         <div style={{
@@ -239,32 +297,32 @@ function Orders({ token, onBack }) {
           padding: "20px", marginBottom: "20px",
           boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
         }}>
-          <h3 style={{ marginBottom: "15px" }}>
-            🛍️ Order Items
-          </h3>
+          <h3 style={{ margin: "0 0 15px" }}>🛍️ Items Ordered</h3>
           {selectedOrder.orderItems?.map((item, i) => (
             <div key={i} style={{
               display: "flex", alignItems: "center",
-              gap: "12px", padding: "10px 0",
-              borderBottom: "1px solid #f0f0f0"
+              gap: "12px", padding: "12px 0",
+              borderBottom: "1px solid #f5f5f5"
             }}>
               <img
                 src={item.product?.imageUrl}
                 alt={item.productName}
                 style={{
-                  width: "60px", height: "60px",
+                  width: "65px", height: "65px",
                   objectFit: "contain",
-                  borderRadius: "5px",
-                  backgroundColor: "#f8f9fa"
+                  borderRadius: "6px",
+                  backgroundColor: "#f8f9fa",
+                  padding: "4px"
                 }}
                 onError={(e) => {
                   e.target.src =
-                    "https://via.placeholder.com/60?text=No";
+                    "https://via.placeholder.com/65?text=No+Img";
                 }}
               />
               <div style={{ flex: 1 }}>
                 <p style={{
-                  margin: 0, fontWeight: "bold"
+                  margin: "0 0 3px",
+                  fontWeight: "bold", fontSize: "15px"
                 }}>
                   {item.productName}
                 </p>
@@ -277,40 +335,46 @@ function Orders({ token, onBack }) {
               </div>
               <p style={{
                 margin: 0, fontWeight: "bold",
-                color: "#28a745"
+                color: "#28a745", fontSize: "16px"
               }}>
                 ₹{item.itemTotal?.toLocaleString()}
               </p>
             </div>
           ))}
 
-          {/* Price Summary */}
-          <div style={{ marginTop: "15px" }}>
+          {/* Price Breakdown */}
+          <div style={{ marginTop: "15px", paddingTop: "10px" }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
-              padding: "8px 0", color: "gray"
+              padding: "6px 0", color: "gray", fontSize: "14px"
             }}>
-              <span>Subtotal</span>
-              <span>
-                ₹{selectedOrder.totalPrice?.toLocaleString()}
-              </span>
+              <span>Item Total</span>
+              <span>₹{selectedOrder.totalPrice?.toLocaleString()}</span>
             </div>
             <div style={{
               display: "flex", justifyContent: "space-between",
-              padding: "8px 0", color: "#28a745"
+              padding: "6px 0", color: "#28a745", fontSize: "14px"
             }}>
-              <span>Discount</span>
+              <span>Discount (10%)</span>
               <span>
                 − ₹{selectedOrder.discountAmount?.toLocaleString()}
               </span>
             </div>
             <div style={{
               display: "flex", justifyContent: "space-between",
-              padding: "10px 0", fontWeight: "bold",
-              fontSize: "18px",
-              borderTop: "2px dashed #eee", marginTop: "5px"
+              padding: "6px 0", color: "gray", fontSize: "14px"
             }}>
-              <span>Total Paid</span>
+              <span>Delivery</span>
+              <span style={{ color: "#28a745" }}>FREE</span>
+            </div>
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              padding: "12px 0 0",
+              borderTop: "2px dashed #eee",
+              marginTop: "6px",
+              fontWeight: "bold", fontSize: "18px"
+            }}>
+              <span>Amount Paid</span>
               <span style={{ color: "#B12704" }}>
                 ₹{selectedOrder.finalPrice?.toLocaleString()}
               </span>
@@ -318,28 +382,54 @@ function Orders({ token, onBack }) {
           </div>
         </div>
 
-        {/* Delivery Address */}
+        {/* Delivery Address + Payment */}
         <div style={{
-          backgroundColor: "white", borderRadius: "8px",
-          padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "15px", marginBottom: "20px"
         }}>
-          <h3 style={{ marginBottom: "15px" }}>
-            📍 Delivery Address
-          </h3>
-          <p style={{ margin: "5px 0" }}>
-            {selectedOrder.deliveryAddress}
-          </p>
-          <p style={{ margin: "5px 0", color: "gray" }}>
-            {selectedOrder.city}, {selectedOrder.state} -
-            {selectedOrder.pincode}
-          </p>
-          <p style={{ margin: "5px 0", color: "gray" }}>
-            📞 {selectedOrder.phone}
-          </p>
-          <p style={{ margin: "10px 0 0", color: "#007bff" }}>
-            💳 Payment: {selectedOrder.paymentMethod} |
-            Status: {selectedOrder.paymentStatus}
-          </p>
+          <div style={{
+            backgroundColor: "white", borderRadius: "8px",
+            padding: "20px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+          }}>
+            <h4 style={{ margin: "0 0 10px" }}>📍 Delivery Address</h4>
+            <p style={{ margin: "4px 0", fontSize: "14px" }}>
+              {selectedOrder.deliveryAddress}
+            </p>
+            <p style={{ margin: "4px 0", color: "gray", fontSize: "14px" }}>
+              {selectedOrder.city}, {selectedOrder.state}
+            </p>
+            <p style={{ margin: "4px 0", color: "gray", fontSize: "14px" }}>
+              PIN: {selectedOrder.pincode}
+            </p>
+            <p style={{ margin: "4px 0", color: "gray", fontSize: "14px" }}>
+              📞 {selectedOrder.phone}
+            </p>
+          </div>
+
+          <div style={{
+            backgroundColor: "white", borderRadius: "8px",
+            padding: "20px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+          }}>
+            <h4 style={{ margin: "0 0 10px" }}>💳 Payment Info</h4>
+            <p style={{ margin: "4px 0", fontSize: "14px" }}>
+              Method: <strong>{selectedOrder.paymentMethod}</strong>
+            </p>
+            <p style={{ margin: "4px 0", fontSize: "14px" }}>
+              Status:{" "}
+              <strong style={{
+                color: selectedOrder.paymentStatus === "PAID"
+                  ? "#28a745" : "#ff9900"
+              }}>
+                {selectedOrder.paymentStatus}
+              </strong>
+            </p>
+            <p style={{ margin: "4px 0", color: "gray", fontSize: "13px" }}>
+              Order Date: {formatDate(selectedOrder.orderDate)}
+            </p>
+          </div>
         </div>
 
         {/* Cancel Button */}
@@ -348,33 +438,21 @@ function Orders({ token, onBack }) {
           <button
             className="btn-danger"
             style={{
-              width: "100%", padding: "12px",
-              marginTop: "15px", fontSize: "16px"
+              width: "100%", padding: "13px",
+              fontSize: "16px"
             }}
             onClick={() => handleCancel(selectedOrder.id)}
           >
-            ❌ Cancel Order
+            ❌ Cancel This Order
           </button>
         )}
       </div>
     );
   }
 
-  // ===== ORDERS LIST VIEW =====
-  if (loading) {
-    return (
-      <div style={{ textAlign: "center", padding: "80px" }}>
-        <p style={{ fontSize: "20px", color: "gray" }}>
-          ⏳ Loading orders...
-        </p>
-      </div>
-    );
-  }
-
+  // ===== ORDERS LIST =====
   return (
     <div className="orders-list">
-
-      {/* Header */}
       <div style={{
         display: "flex", alignItems: "center",
         gap: "15px", marginBottom: "25px"
@@ -387,7 +465,6 @@ function Orders({ token, onBack }) {
         </h2>
       </div>
 
-      {/* No Orders */}
       {orders.length === 0 && (
         <div className="empty-state">
           <div style={{ fontSize: "60px", marginBottom: "15px" }}>
@@ -395,7 +472,7 @@ function Orders({ token, onBack }) {
           </div>
           <h3>No orders yet!</h3>
           <p style={{ color: "gray", marginBottom: "20px" }}>
-            Start shopping to see orders here
+            Shop now to see your orders here
           </p>
           <button className="btn-primary" onClick={onBack}>
             Start Shopping
@@ -403,21 +480,16 @@ function Orders({ token, onBack }) {
         </div>
       )}
 
-      {/* Orders List */}
       {orders.map((order) => (
         <div
           key={order.id}
           className={`order-card ${order.status}`}
         >
-          {/* Order Header */}
           <div className="order-header">
             <div>
-              <span className="order-id">
-                Order #{order.id}
-              </span>
+              <span className="order-id">Order #{order.id}</span>
               <span style={{
-                color: "gray", fontSize: "13px",
-                marginLeft: "10px"
+                color: "gray", fontSize: "13px", marginLeft: "10px"
               }}>
                 {formatDate(order.orderDate)}
               </span>
@@ -432,36 +504,35 @@ function Orders({ token, onBack }) {
             </span>
           </div>
 
-          {/* Items Preview */}
-          <div style={{ marginBottom: "15px" }}>
+          {/* Items preview */}
+          <div style={{ marginBottom: "12px" }}>
             {order.orderItems?.slice(0, 2).map((item, i) => (
               <div key={i} style={{
-                display: "flex", alignItems: "center",
-                gap: "10px", marginBottom: "8px"
+                display: "flex", gap: "10px",
+                marginBottom: "8px", alignItems: "center"
               }}>
                 <img
                   src={item.product?.imageUrl}
                   alt={item.productName}
                   style={{
-                    width: "50px", height: "50px",
+                    width: "45px", height: "45px",
                     objectFit: "contain",
-                    borderRadius: "5px",
-                    backgroundColor: "#f8f9fa"
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "4px"
                   }}
                   onError={(e) => {
                     e.target.src =
-                      "https://via.placeholder.com/50?text=No";
+                      "https://via.placeholder.com/45?text=No";
                   }}
                 />
                 <div>
                   <p style={{
-                    margin: 0, fontWeight: "bold",
-                    fontSize: "14px"
+                    margin: 0, fontWeight: "bold", fontSize: "14px"
                   }}>
                     {item.productName}
                   </p>
                   <p style={{
-                    margin: 0, color: "gray", fontSize: "13px"
+                    margin: 0, color: "gray", fontSize: "12px"
                   }}>
                     Qty: {item.quantity} |
                     ₹{item.itemTotal?.toLocaleString()}
@@ -470,7 +541,7 @@ function Orders({ token, onBack }) {
               </div>
             ))}
             {order.orderItems?.length > 2 && (
-              <p style={{ color: "gray", fontSize: "13px" }}>
+              <p style={{ color: "#007bff", fontSize: "13px", margin: 0 }}>
                 +{order.orderItems.length - 2} more items
               </p>
             )}
@@ -478,28 +549,35 @@ function Orders({ token, onBack }) {
 
           {/* Footer */}
           <div style={{
-            display: "flex",
-            justifyContent: "space-between",
+            display: "flex", justifyContent: "space-between",
             alignItems: "center",
-            borderTop: "1px solid #eee",
-            paddingTop: "12px", flexWrap: "wrap", gap: "10px"
+            borderTop: "1px solid #eee", paddingTop: "12px",
+            flexWrap: "wrap", gap: "10px"
           }}>
             <div>
               <p style={{ margin: 0, fontSize: "13px", color: "gray" }}>
-                📍 {order.city}, {order.state}
+                📍 {order.city} | 🚚 By {formatDate(order.deliveryDate)}
               </p>
-              <p style={{ margin: 0, fontSize: "13px", color: "gray" }}>
-                Expected: {formatDate(order.deliveryDate)}
+              <p style={{ margin: "3px 0 0", fontSize: "13px" }}>
+                💳 {order.paymentMethod} |
+                <span style={{
+                  color: order.paymentStatus === "PAID"
+                    ? "#28a745" : "#ff9900",
+                  fontWeight: "bold"
+                }}>
+                  {" "}{order.paymentStatus}
+                </span>
               </p>
             </div>
 
             <div style={{
-              display: "flex", alignItems: "center", gap: "10px"
+              display: "flex", gap: "10px",
+              alignItems: "center"
             }}>
               <div style={{ textAlign: "right" }}>
                 <p style={{
-                  margin: 0, fontSize: "20px",
-                  fontWeight: "bold", color: "#B12704"
+                  margin: 0, fontWeight: "bold",
+                  fontSize: "18px", color: "#B12704"
                 }}>
                   ₹{order.finalPrice?.toLocaleString()}
                 </p>
@@ -510,23 +588,21 @@ function Orders({ token, onBack }) {
                 </p>
               </div>
 
-              {/* Track Order Button */}
               <button
                 className="btn-primary"
-                style={{ padding: "8px 16px" }}
                 onClick={() => {
                   setSelectedOrder(order);
                   setView("tracking");
                 }}
               >
-                📍 Track Order
+                📍 Track
               </button>
 
               {(order.status === "CONFIRMED" ||
                 order.status === "PENDING") && (
                 <button
                   className="btn-danger"
-                  style={{ padding: "8px 16px" }}
+                  style={{ padding: "8px 14px" }}
                   onClick={() => handleCancel(order.id)}
                 >
                   Cancel

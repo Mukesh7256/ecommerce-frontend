@@ -465,26 +465,26 @@ function UserDashboard({ user, onLogout }) {
 
   // ===== ORDERS VIEW =====
   if (view === "orders") {
-    return (
-      <div style={{ backgroundColor: "#f0f2f5", minHeight: "100vh" }}>
-        <Navbar
-          user={user} isAdmin={false}
-          cartCount={cartCount}
-          onCartClick={() => setView("cart")}
-          onLogout={onLogout}
-          onSearch={handleSearch}
-          onHomeClick={() => setView("home")}
-          onOrdersClick={() => setView("orders")}
+  return (
+    <div style={{ backgroundColor: "#f0f2f5", minHeight: "100vh" }}>
+      <Navbar
+        user={user} isAdmin={false}
+        cartCount={cartCount}
+        onCartClick={() => setView("cart")}
+        onLogout={onLogout}
+        onSearch={handleSearch}
+        onHomeClick={() => setView("home")}
+        onOrdersClick={() => setView("orders")}
+      />
+      <div style={{ padding: "20px" }}>
+        <Orders
+          token={user.token}
+          onBack={() => setView("home")}
         />
-        <div style={{ padding: "20px" }}>
-          <Orders
-            token={user.token}
-            onBack={() => setView("home")}
-          />
-        </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // ===== PRODUCT DETAIL VIEW =====
   if (view === "detail" && selectedProduct) {
