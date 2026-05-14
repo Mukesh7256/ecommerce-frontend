@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import { placeOrder } from "../../services/orderService";
 import "../../styles/checkout.css";
 
 function Checkout({ token, cartItems, onSuccess, onBack }) {
@@ -13,7 +13,8 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
     paymentMethod: "COD"
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState("");
 
   // Calculate prices
   const totalPrice = cartItems.reduce(
@@ -26,15 +27,42 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    // Clear error when typing
+    if (errors[e.target.name]) {
+      setErrors({ ...errors, [e.target.name]: "" });
+    }
   };
 
-  // Load Razorpay script
-  const loadRazorpayScript = () => {
+  // T052: Frontend validation
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!form.deliveryAddress.trim() ||
+        form.deliveryAddress.trim().length < 10) {
+      newErrors.deliveryAddress =
+        "Enter complete address (min 10 chars)";
+    }
+    if (!form.city.trim()) {
+      newErrors.city = "City is required";
+    }
+    if (!form.state) {
+      newErrors.state = "Please select state";
+    }
+    if (!/^[1-9][0-9]{5}$/.test(form.pincode)) {
+      newErrors.pincode = "Enter valid 6-digit pincode";
+    }
+    if (!/^[6-9][0-9]{9}$/.test(form.phone)) {
+      newErrors.phone = "Enter valid 10-digit mobile number";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Load Razorpay
+  const loadRazorpay = () => {
     return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
+      if (window.Razorpay) { resolve(true); return; }
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.onload = () => resolve(true);
@@ -43,109 +71,92 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
     });
   };
 
-  // Razorpay Payment Handler
+  // Razorpay Payment
   const handleRazorpayPayment = async () => {
     setLoading(true);
-    const loaded = await loadRazorpayScript();
+    const loaded = await loadRazorpay();
 
     if (!loaded) {
-      setError("Payment gateway failed! Try COD.");
+      setApiError("Payment gateway unavailable! Try COD.");
       setLoading(false);
       return;
     }
 
     const options = {
-      // ✅ Replace with your Razorpay Test Key
-      key: "rzp_test_SohNc8ajtoxvKi",
-      amount: Math.round(finalPrice * 100), // paise mein
+      key: "rzp_test_YOUR_KEY_HERE", // ← Add your key
+      amount: Math.round(finalPrice * 100),
       currency: "INR",
       name: "ShopEasy",
       description: "Order Payment",
-      image: "https://via.placeholder.com/150?text=ShopEasy",
-      handler: async function (response) {
-        // Payment successful!
+      handler: async (response) => {
         try {
-          const res = await axios.post(
-            "http://localhost:8080/api/orders/checkout",
+          // T051: Place order after payment
+          const order = await placeOrder(
             { ...form, paymentMethod: "ONLINE" },
-            { headers: { Authorization: `Bearer ${token}` } }
+            token
           );
-          onSuccess(res.data);
+          onSuccess(order);
         } catch (err) {
-          setError("Order save failed! Contact support.");
+          setApiError("Order save failed after payment!");
         }
       },
       prefill: {
-        name: "Customer",
-        contact: form.phone || "9999999999"
+        contact: form.phone
       },
-      notes: {
-        address: form.deliveryAddress
-      },
-      theme: {
-        color: "#007bff"
-      },
+      theme: { color: "#007bff" },
       modal: {
-        ondismiss: function () {
+        ondismiss: () => {
           setLoading(false);
-          setError("Payment cancelled by user.");
+          setApiError("Payment cancelled!");
         }
       }
     };
 
-    const razorpay = new window.Razorpay(options);
-    razorpay.open();
+    const razor = new window.Razorpay(options);
+    razor.open();
     setLoading(false);
   };
 
-  // Form Submit Handler
+  // T051: Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setApiError("");
 
-    // Validate form
-    if (!form.deliveryAddress.trim()) {
-      setError("Please enter delivery address!");
-      return;
-    }
-    if (!form.city.trim()) {
-      setError("Please enter city!");
-      return;
-    }
-    if (!form.state) {
-      setError("Please select state!");
-      return;
-    }
-    if (form.pincode.length !== 6) {
-      setError("Please enter valid 6-digit pincode!");
-      return;
-    }
-    if (form.phone.length !== 10) {
-      setError("Please enter valid 10-digit phone!");
+    // T052: Validate first
+    if (!validateForm()) {
+      window.scrollTo(0, 0);
       return;
     }
 
-    // Online Payment → Razorpay
+    // Online payment
     if (form.paymentMethod === "ONLINE") {
       handleRazorpayPayment();
       return;
     }
 
-    // COD → Direct order
+    // T051: COD - Place order directly
     setLoading(true);
     try {
-      const res = await axios.post(
-        "http://localhost:8080/api/orders/checkout",
-        form,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      onSuccess(res.data);
+      const order = await placeOrder(form, token);
+      onSuccess(order);
     } catch (err) {
-      setError(err.response?.data || "Checkout failed! Try again.");
+      setApiError(
+        err.response?.data || "Checkout failed! Try again."
+      );
+      window.scrollTo(0, 0);
     } finally {
       setLoading(false);
     }
   };
+
+  const inputStyle = (fieldName) => ({
+    width: "100%", padding: "12px",
+    border: `1px solid ${errors[fieldName] ? "#dc3545" : "#ddd"}`,
+    borderRadius: "5px", fontSize: "15px",
+    boxSizing: "border-box",
+    outline: "none",
+    transition: "border-color 0.2s"
+  });
 
   return (
     <div className="checkout-container">
@@ -161,62 +172,82 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
         <h2 style={{ margin: 0 }}>🛍️ Checkout</h2>
       </div>
 
-      {/* Error */}
-      {error && (
+      {/* API Error */}
+      {apiError && (
         <div style={{
           backgroundColor: "#f8d7da", color: "#721c24",
           padding: "12px 16px", borderRadius: "6px",
           marginBottom: "15px", fontSize: "14px"
         }}>
-          ⚠️ {error}
+          ⚠️ {apiError}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
         <div className="checkout-grid">
 
-          {/* LEFT SIDE */}
+          {/* LEFT */}
           <div>
 
-            {/* Delivery Address */}
+            {/* Delivery Section */}
             <div className="checkout-section">
               <h3>📍 Delivery Address</h3>
 
+              {/* Full Address */}
               <div className="form-group-checkout">
                 <label className="checkout-label">
                   Full Address *
                 </label>
                 <textarea
                   name="deliveryAddress"
-                  className="checkout-input"
+                  style={{
+                    ...inputStyle("deliveryAddress"),
+                    resize: "vertical"
+                  }}
                   placeholder="House No., Street, Area, Landmark"
                   value={form.deliveryAddress}
                   onChange={handleChange}
                   rows={3}
-                  required
                 />
+                {errors.deliveryAddress && (
+                  <p style={{
+                    color: "#dc3545", fontSize: "12px",
+                    margin: "4px 0 0"
+                  }}>
+                    ⚠️ {errors.deliveryAddress}
+                  </p>
+                )}
               </div>
 
               <div className="form-row-2">
+                {/* City */}
                 <div className="form-group-checkout">
                   <label className="checkout-label">City *</label>
                   <input
                     name="city"
-                    className="checkout-input"
+                    style={inputStyle("city")}
                     placeholder="e.g. Mumbai"
                     value={form.city}
                     onChange={handleChange}
-                    required
                   />
+                  {errors.city && (
+                    <p style={{
+                      color: "#dc3545", fontSize: "12px",
+                      margin: "4px 0 0"
+                    }}>
+                      ⚠️ {errors.city}
+                    </p>
+                  )}
                 </div>
+
+                {/* State */}
                 <div className="form-group-checkout">
                   <label className="checkout-label">State *</label>
                   <select
                     name="state"
-                    className="checkout-input"
+                    style={inputStyle("state")}
                     value={form.state}
                     onChange={handleChange}
-                    required
                   >
                     <option value="">Select State</option>
                     <option>Andhra Pradesh</option>
@@ -233,45 +264,70 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                     <option>Uttar Pradesh</option>
                     <option>West Bengal</option>
                   </select>
+                  {errors.state && (
+                    <p style={{
+                      color: "#dc3545", fontSize: "12px",
+                      margin: "4px 0 0"
+                    }}>
+                      ⚠️ {errors.state}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="form-row-2">
+                {/* Pincode */}
                 <div className="form-group-checkout">
                   <label className="checkout-label">
                     Pincode *
                   </label>
                   <input
                     name="pincode"
-                    className="checkout-input"
+                    style={inputStyle("pincode")}
                     placeholder="6-digit pincode"
                     value={form.pincode}
                     onChange={(e) => {
-                      if (e.target.value.length <= 6) {
+                      if (/^\d{0,6}$/.test(e.target.value)) {
                         handleChange(e);
                       }
                     }}
                     maxLength={6}
-                    required
                   />
+                  {errors.pincode && (
+                    <p style={{
+                      color: "#dc3545", fontSize: "12px",
+                      margin: "4px 0 0"
+                    }}>
+                      ⚠️ {errors.pincode}
+                    </p>
+                  )}
                 </div>
+
+                {/* Phone */}
                 <div className="form-group-checkout">
                   <label className="checkout-label">
                     Phone Number *
                   </label>
                   <input
                     name="phone"
-                    className="checkout-input"
-                    placeholder="10-digit mobile number"
+                    style={inputStyle("phone")}
+                    placeholder="10-digit mobile"
                     value={form.phone}
                     onChange={(e) => {
-                      if (e.target.value.length <= 10) {
+                      if (/^\d{0,10}$/.test(e.target.value)) {
                         handleChange(e);
                       }
                     }}
                     maxLength={10}
-                    required
                   />
+                  {errors.phone && (
+                    <p style={{
+                      color: "#dc3545", fontSize: "12px",
+                      margin: "4px 0 0"
+                    }}>
+                      ⚠️ {errors.phone}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -281,7 +337,6 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               <h3>💳 Payment Method</h3>
               <div className="payment-options">
 
-                {/* COD Option */}
                 <div
                   className={`payment-option ${
                     form.paymentMethod === "COD" ? "selected" : ""
@@ -299,7 +354,6 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                   </div>
                 </div>
 
-                {/* Online Payment Option */}
                 <div
                   className={`payment-option ${
                     form.paymentMethod === "ONLINE" ? "selected" : ""
@@ -316,26 +370,25 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                     UPI / Card / NetBanking
                   </div>
                   <div style={{
-                    marginTop: "5px",
-                    fontSize: "10px",
+                    marginTop: "5px", fontSize: "10px",
                     backgroundColor: "#28a745",
-                    color: "white",
-                    padding: "2px 6px",
-                    borderRadius: "3px"
+                    color: "white", padding: "2px 6px",
+                    borderRadius: "3px", display: "inline-block"
                   }}>
-                    Powered by Razorpay
+                    Razorpay
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Order Items Preview */}
+            {/* Order Items */}
             <div className="checkout-section">
-              <h3>🛒 Items ({cartItems.length})</h3>
+              <h3>🛒 Order Items ({cartItems.length})</h3>
               {cartItems.map((item, i) => (
                 <div key={i} style={{
                   display: "flex", gap: "12px",
-                  alignItems: "center", padding: "10px 0",
+                  alignItems: "center",
+                  padding: "10px 0",
                   borderBottom: "1px solid #f5f5f5"
                 }}>
                   <img
@@ -360,7 +413,8 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                       {item.product?.name}
                     </p>
                     <p style={{
-                      margin: 0, color: "gray", fontSize: "13px"
+                      margin: 0, color: "gray",
+                      fontSize: "13px"
                     }}>
                       Qty: {item.quantity}
                     </p>
@@ -375,9 +429,10 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
                 </div>
               ))}
             </div>
+
           </div>
 
-          {/* RIGHT SIDE - Price Summary */}
+          {/* RIGHT - Summary */}
           <div className="checkout-summary">
             <h3 style={{ margin: "0 0 15px" }}>
               📋 Price Details
@@ -393,7 +448,7 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               <span>− ₹{discount.toLocaleString()}</span>
             </div>
             <div className="summary-row">
-              <span>Delivery Charges</span>
+              <span>Delivery</span>
               <span style={{
                 color: delivery === 0 ? "#28a745" : "#333"
               }}>
@@ -407,11 +462,10 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               </span>
             </div>
 
-            {/* Savings */}
             <div style={{
-              backgroundColor: "#d4edda", padding: "10px",
-              borderRadius: "5px", textAlign: "center",
-              margin: "10px 0"
+              backgroundColor: "#d4edda",
+              padding: "10px", borderRadius: "5px",
+              textAlign: "center", margin: "10px 0"
             }}>
               <p style={{
                 color: "#155724", margin: 0,
@@ -421,7 +475,6 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               </p>
             </div>
 
-            {/* Payment Info */}
             <div style={{
               backgroundColor: "#e8f4fd", padding: "10px",
               borderRadius: "5px", marginBottom: "5px"
@@ -431,7 +484,7 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               }}>
                 💳 {form.paymentMethod === "COD"
                   ? "Cash on Delivery"
-                  : "Online Payment via Razorpay"
+                  : "Online via Razorpay"
                 }
               </p>
             </div>
@@ -449,16 +502,14 @@ function Checkout({ token, cartItems, onSuccess, onBack }) {
               {loading
                 ? "⏳ Processing..."
                 : form.paymentMethod === "ONLINE"
-                  ? "💳 Pay ₹" + finalPrice.toLocaleString()
+                  ? `💳 Pay ₹${finalPrice.toLocaleString()}`
                   : "🛍️ Place Order"
               }
             </button>
 
-            {/* Trust Badges */}
             <div style={{
               textAlign: "center", marginTop: "15px",
-              fontSize: "12px", color: "gray",
-              lineHeight: "1.8"
+              fontSize: "12px", color: "gray", lineHeight: "1.8"
             }}>
               <p style={{ margin: 0 }}>🔒 100% Secure Payments</p>
               <p style={{ margin: 0 }}>✅ Easy 7-Day Returns</p>
